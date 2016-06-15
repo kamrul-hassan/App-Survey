@@ -99,6 +99,7 @@ angular.module('starter', ['ionic','ngCordova', 'starter.controllers', 'starter.
   })
   .state('tab.sync', {
     url: '/sync',
+    cache: false,
     views: {
       'tab-sync': {
         templateUrl: 'templates/tab-sync.html',
