@@ -4,7 +4,13 @@ angular.module('starter.services', [])
     return {
         login: function(model) {  
             var header = { headers: {'Content-Type': 'application/json'}}         
-            return $http.post(config.serviceUrl + 'Login/Index', model, header);
+            return $http.post(config.serviceUrl + 'Login/Index', model, header)
+            .success(function (data, status) {
+                return data;
+            })
+            .error(function (data, status) {
+                alert(status);
+            });;
         }
     }
 })
