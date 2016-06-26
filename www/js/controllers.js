@@ -1,12 +1,12 @@
 angular.module('starter.controllers', [])
-    .controller('LoginCtrl', function ($scope, $state, $ionicPopup, Login) {
+    .controller('LoginCtrl', function ($scope, $state, $ionicPopup, UserFactory) {
         localStorage.setItem("EditItemId", 0);
-        var currentUser = localStorage.getItem("CurrentUser");
+        var currentUser = UserFactory.getCurrentUser();
         if (currentUser) {
             $state.go('tab.download');
         }
         $scope.login = function (user) {
-            Login.login(user).then(function (res) {
+            UserFactory.login(user).then(function (res) {
                 if (res.data) {
                     localStorage.setItem("CurrentUser", JSON.stringify(res.data));
                     $state.go('tab.download');
@@ -21,13 +21,12 @@ angular.module('starter.controllers', [])
         };
     })
 
-    .controller('HomeCtrl', function ($scope, $state, $ionicPopup, Questions, DAL) {
-        var currentUser = localStorage.getItem("CurrentUser");
-        if (currentUser == null) {
-            $state.go('login');
+    .controller('HomeCtrl', function ($scope, $state, $ionicPopup, SurveyFactory, DAL, UserFactory) {
+        var user = UserFactory.getCurrentUser();
+        if (user == null) {
+            $state.go('login')
         }
         $scope.showSaveButton = false;
-        var user = JSON.parse(currentUser);
         var type = {};
         var itemId = parseInt(localStorage.getItem("EditItemId"));
         $scope.index = 0;
@@ -49,6 +48,8 @@ angular.module('starter.controllers', [])
             else {
                 type = JSON.parse(SurveyType);
             }
+            if (user == null)
+                user = UserFactory.getCurrentUser();
             DAL.getQuestion(type.Id, user.Id).then(function (res) {
                 $scope.serveyQuestions = JSON.parse(res);
                 PopulateModel();
@@ -65,7 +66,7 @@ angular.module('starter.controllers', [])
                 });
             }
             else {
-                
+
                 $scope.increaseIndex = function () {
                     $scope.index = $scope.index + 1;
                 }
@@ -106,7 +107,7 @@ angular.module('starter.controllers', [])
 
     })
 
-    .controller('ListCtrl', function ($scope, $state, $ionicPopup, SurveyList, DAL) {
+    .controller('ListCtrl', function ($scope, $state, $ionicPopup, SurveyFactory, DAL) {
         localStorage.setItem("EditItemId", 0);
         var currentUser = localStorage.getItem("CurrentUser");
         if (currentUser == null) {
@@ -127,7 +128,7 @@ angular.module('starter.controllers', [])
         });
         $scope.isServerChange = function () {
             if ($scope.isServer.checked) {
-                SurveyList.get().then(function (res) {
+                SurveyFactory.getSurveys(user.Id, type.Id).then(function (res) {
                     $scope.surveyList = res.data;
                 });
             }
@@ -142,46 +143,76 @@ angular.module('starter.controllers', [])
             $state.go('tab.home');
         }
     })
-    .controller('DownloadCtrl', function ($scope, $state, $ionicPopup, Questions, DAL) {
+    .controller('DownloadCtrl', function ($scope, $state, $ionicPopup, SurveyFactory, DAL, UserFactory) {
         localStorage.setItem("EditItemId", 0);
-        var currentUser = localStorage.getItem("CurrentUser");
-        if (currentUser == null) {
+        var user = UserFactory.getCurrentUser();
+        if (user == null) {
             $state.go('login')
         }
-        Questions.getSureveyType().then(function (res) {
+        SurveyFactory.getSureveyType().then(function (res) {
             $scope.items = res.data;
             localStorage.setItem('SureveyType', JSON.stringify(res.data))
         });
         $scope.addToPlaylist = function (data) {
+            if (user == null)
+                user = UserFactory.getCurrentUser();
             localStorage.setItem('SelectedSurveyType', JSON.stringify(data));
-            var user = JSON.parse(currentUser);
-
-            DAL.getQuestion(data.Id, user.Id).then(function (result) {
-                if (!result) {
-                    Questions.get(data.Id).then(
-                        function (res) {
-                            DAL.saveQuestion(data.Id, user.Id, res)
-                                .then(
-                                function (result) {
-                                    $state.go('tab.home');
-                                },
-                                function (error) {
-                                    alert('Error saving Questions to local!');
-                                });
-                        },
-                        function (error) {
-                            alert(error.statusText);
+            DAL.deleteQuestions(data.Id, user.Id).then(function (respon) {
+                SurveyFactory.get(data.Id).then(
+                    function (res) {
+                        DAL.saveQuestion(data.Id, user.Id, res).then(function (result) {
+                            $state.go('tab.home');
+                        }, function (error) {
+                            alert('Error saving Questions to local!');
                         });
-                }
-                else {
-                    $state.go('tab.home');
-                }
+                    },
+                    function (error) {
+                        alert(error.statusText);
+                    });
+            }, function (error) {
+                alert(error);
             });
-
         };
 
     })
 
-    .controller('SyncCtrl', function ($scope, $state, $ionicPopup) {
+    .controller('SyncCtrl', function ($scope, $state, $ionicPopup, $ionicLoading, SurveyFactory, DAL, UserFactory) {
+        var user = UserFactory.getCurrentUser();
+        if (user == null) {
+            $state.go('login');
+        }
+        var surveyType = SurveyFactory.getSelectedType();
+        if (surveyType == null) {
+            $state.go('tab.download');
+        }
         localStorage.setItem("EditItemId", 0);
+        $scope.submitSurvey = function () {
+            if (user == null) {
+                user = UserFactory.getCurrentUser();
+            }
+            if (surveyType == null) {
+                surveyType = SurveyFactory.getSelectedType();
+            }
+            $ionicLoading.show({
+                template: '<p>Loading...</p><ion-spinner></ion-spinner>'
+            });
+            DAL.getComplateSurvey(user.Id, surveyType.Id).then(function (res) {
+                SurveyFactory.saveSurveys(res).then(function (response) {
+                    if (response.data) {
+                        DAL.deleteServeys(user.Id, surveyType.Id).then(function (resp) {
+
+                        }, function (reason) {
+                            alert(reason);
+                        });
+                    }
+                    $ionicLoading.hide();
+                }, function (error) {
+                    $ionicLoading.hide();
+                    alert(error);
+                });
+            }, function (reason) {
+                $ionicLoading.hide();
+                alert(reason);
+            });
+        }
     });

@@ -1,16 +1,18 @@
 angular.module('starter.services', [])
 
-.factory('Login', function($http,config){  
+.factory('UserFactory', function($http,config){  
     return {
         login: function(model) {  
             var header = { headers: {'Content-Type': 'application/json'}}         
-            return $http.post(config.serviceUrl + 'Login/Index', model, header)
-            .success(function (data, status) {
-                return data;
-            })
-            .error(function (data, status) {
-                alert(status);
-            });;
+            return $http.post(config.serviceUrl + 'Login/Index', model, header);
+        },
+        getCurrentUser: function() {
+            var currentUser = localStorage.getItem("CurrentUser");
+            if(currentUser == null)
+                return null;
+            else{
+                return JSON.parse(currentUser);
+            }
         }
     }
 })
@@ -21,7 +23,7 @@ angular.module('starter.services', [])
         }
     }
 })
-.factory('Questions', function($http,config){    
+.factory('SurveyFactory', function($http,config){    
     var services = {        
         get: function(id) {           
             return $http.get(config.serviceUrl + 'SurveyApp/Get?typeId='+id);
@@ -29,11 +31,20 @@ angular.module('starter.services', [])
         login: function(model){
             return $http.post(config.serviceUrl + 'Login/Index', model);
         },
-        save:function(model) {
+        saveSurveys:function(model) {
             return $http.post(config.serviceUrl + 'SurveyApp/Save', model);
         },
         getSureveyType: function() {           
             return $http.get(config.serviceUrl + 'SurveyApp/GetSurveyTypes');
+        },
+        getSurveys: function(userId, typeId) {
+            return $http.get(config.serviceUrl + 'SurveyApp/GetSurveyList?userId='+ userId+'&typeId='+typeId);
+        }, 
+        getSelectedType: function () {
+            var type = localStorage.getItem('SelectedSurveyType');
+            if (type == null)
+                return null;
+             return JSON.parse(type);       
         }
     }
     return services;  

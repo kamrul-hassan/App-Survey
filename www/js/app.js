@@ -38,7 +38,7 @@ angular.module('starter', ['ionic','ngCordova', 'starter.controllers', 'starter.
   });
 })
 .constant('config',{    
-    serviceUrl : 'http://custemea3.imshealth.com/surveyservice/api/' //'http://localhost:29983/api'
+    serviceUrl : 'http://localhost:29983/api/'//'http://custemea3.imshealth.com/surveyservice/api/' //'http://localhost:29983/api/'
 })
 .config(function($stateProvider, $urlRouterProvider) {
 
